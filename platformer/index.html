@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Endless 2D Runner</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #141218;
+      --card-bg: #1d1b20;
+      --primary: #d3bbff;
+      --on-primary: #3b1d71;
+      --text: #ebdcfd;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Roboto Flex', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+
+    .header-bar {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .back-btn {
+      background-color: var(--card-bg);
+      color: var(--primary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .score-board {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffd700;
+    }
+
+    .game-box {
+      width: 100%;
+      max-width: 800px;
+      height: 50vh;
+      max-height: 400px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Управление под смартфонами — одна гигантская кнопка прыжка */
+    .touch-controls {
+      display: flex;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 14px;
+      justify-content: center;
+    }
+
+    .jump-btn {
+      width: 100%;
+      max-width: 400px;
+      height: 64px;
+      border-radius: 9999px;
+      background-color: var(--primary);
+      color: var(--on-primary);
+      font-weight: 1000;
+      font-size: 20px;
+      border: none;
+      box-shadow: 0 4px 15px rgba(211, 187, 255, 0.3);
+      cursor: pointer;
+    }
+
+    .jump-btn:active {
+      transform: scale(0.97);
+    }
+
+    .restart-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .restart-overlay h2 {
+      font-size: 26px;
+      color: #f87171;
+    }
+
+    .restart-btn {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      padding: 12px 28px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <a href="../" class="back-btn">← На главную</a>
+    <div class="score-board">🪙 Монеты: <span id="score">0</span></div>
+  </div>
+
+  <div class="game-box">
+    <canvas id="canvas"></canvas>
+    
+    <div class="restart-overlay" id="restart-screen">
+      <h2>Упал в пропасть!</h2>
+      <button class="restart-btn" id="restart-btn">🔄 Играть снова</button>
+    </div>
+  </div>
+
+  <div class="touch-controls">
+    <button class="jump-btn" id="btn-jump">🚀 ПРЫЖОК</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const restartScreen = document.getElementById('restart-screen');
+    const restartBtn = document.getElementById('restart-btn');
+
+    canvas.width = 800;
+    canvas.height = 400;
+
+    // === 1. ЗАГРУЗКА ТЕКСТУР И КАРТИНОК ===
+    // Вы можете положить свои картинки в папку img/ или использовать готовые внешние
+    const images = {
+      player: new Image(),
+      coin: new Image(),
+      block: new Image(),
+      bg: new Image()
+    };
+
+    images.player.src = 'img/player.png';
+    images.player.onerror = () => { images.player.src = 'https://cdn-icons-png.flaticon.com/512/616/616438.png'; }; // Иконка кота/героя
+
+    images.coin.src = 'img/coin.png';
+    images.coin.onerror = () => { images.coin.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'; }; // Иконка монетки
+
+    images.block.src = 'img/block.png';
+    images.block.onerror = () => { images.block.src = 'https://img.freepik.com/free-vector/stone-ground-texture_1048-2023.jpg'; }; // Текстура земли
+
+    images.bg.src = 'img/bg.png';
+    images.bg.onerror = () => { images.bg.src = 'https://img.freepik.com/free-vector/pixel-art-game-location-with-mountains-sky_107791-8656.jpg'; }; // Фон
+
+    let score = 0;
+    let gameOver = false;
+    let bgScrollX = 0;
+
+    // Игрок (Автобег)
+    const player = {
+      x: 100,
+      y: 200,
+      width: 40,
+      height: 40,
+      speed: 7.5, // Скорость автобега
+      vy: 0,
+      jumpPower: -13,
+      gravity: 0.65,
+      grounded: false
+    };
+
+    // Массивы блоков и монет
+    let platforms = [];
+    let coins = [];
+    let lastPlatformX = 0;
+
+    // === 2. БЕСКОНЕЧНАЯ ГЕНЕРАЦИЯ МИРА ===
+    function generateInitialWorld() {
+      platforms = [
+        { x: 0, y: 300, width: 400, height: 100 } // Начальная безопасная площадка
+      ];
+      lastPlatformX = 400;
+
+      for (let i = 0; i < 5; i++) {
+        spawnNextPlatform();
+      }
+    }
+
+    function spawnNextPlatform() {
+      // Случайная ширина пропасти (80px - 160px)
+      const gap = Math.floor(Math.random() * 80) + 80;
+      // Случайная ширина островка (180px - 350px)
+      const width = Math.floor(Math.random() * 170) + 180;
+      // Высота платформы
+      const y = Math.floor(Math.random() * 80) + 260;
+
+      const newX = lastPlatformX + gap;
+      platforms.push({ x: newX, y: y, width: width, height: 140 });
+
+      // Генерация монеток над новой платформой
+      if (Math.random() > 0.3) {
+        coins.push({
+          x: newX + width / 2,
+          y: y - 40,
+          collected: false
+        });
+      }
+
+      lastPlatformX = newX + width;
+    }
+
+    // === 3. УПРАВЛЕНИЕ (ПРЫЖОК) ===
+    function doJump() {
+      if (player.grounded && !gameOver) {
+        player.vy = player.jumpPower;
+        player.grounded = false;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+        e.preventDefault();
+        doJump();
+      }
+    });
+
+    const jumpBtn = document.getElementById('btn-jump');
+    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
+    jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); doJump(); });
+
+    // Прыжок при тапе по самому экрану игры
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
+
+    // === 4. ПЕРЕЗАПУСК ===
+    function resetGame() {
+      player.x = 100;
+      player.y = 200;
+      player.vy = 0;
+      score = 0;
+      scoreEl.innerText = score;
+      gameOver = false;
+      bgScrollX = 0;
+      generateInitialWorld();
+      restartScreen.style.display = 'none';
+      requestAnimationFrame(update);
+    }
+
+    restartBtn.addEventListener('click', resetGame);
+
+    // === 5. ИГРОВОЙ ЦИКЛ ===
+    function update() {
+      if (gameOver) return;
+
+      // Авто-бег вперед
+      player.x += player.speed;
+      player.vy += player.gravity;
+      player.y += player.vy;
+
+      // Движущийся задний фон (Параллакс)
+      bgScrollX = player.x * 0.3;
+
+      player.grounded = false;
+
+      // Проверка наступания на платформы
+      platforms.forEach(p => {
+        if (
+          player.x + player.width > p.x &&
+          player.x < p.x + p.width &&
+          player.y + player.height >= p.y &&
+          player.y + player.height <= p.y + 18 &&
+          player.vy >= 0
+        ) {
+          player.grounded = true;
+          player.vy = 0;
+          player.y = p.y - player.height;
+        }
+      });
+
+      // Сбор монет
+      coins.forEach(c => {
+        if (!c.collected && Math.abs((player.x + 20) - c.x) < 30 && Math.abs((player.y + 20) - c.y) < 30) {
+          c.collected = true;
+          score += 10;
+          scoreEl.innerText = score;
+        }
+      });
+
+      // Генерация новых островков при движении вперед
+      if (player.x + 600 > lastPlatformX) {
+        spawnNextPlatform();
+      }
+
+      // Удаление старых зашедших за экран блоков для экономии памяти
+      platforms = platforms.filter(p => p.x + p.width > player.x - 300);
+      coins = coins.filter(c => c.x > player.x - 300);
+
+      // Падение в яму
+      if (player.y > canvas.height + 60) {
+        gameOver = true;
+        restartScreen.style.display = 'flex';
+      }
+
+      draw();
+
+      if (!gameOver) requestAnimationFrame(update);
+    }
+
+    // === 6. ОТРИСОВКА С ТЕКСТУРАМИ ===
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Камера следит за бегущим персонажем
+      ctx.save();
+      const cameraX = -player.x + 100;
+
+      // 1. Движущийся Задний Фон
+      if (images.bg.complete) {
+        const bgWidth = canvas.width;
+        const offsetX = -(bgScrollX % bgWidth);
+        ctx.drawImage(images.bg, offsetX, 0, bgWidth, canvas.height);
+        ctx.drawImage(images.bg, offsetX + bgWidth, 0, bgWidth, canvas.height);
+      }
+
+      ctx.translate(cameraX, 0);
+
+      // 2. Блоки земли (Платформы) с текстурой
+      platforms.forEach(p => {
+        if (images.block.complete) {
+          ctx.drawImage(images.block, p.x, p.y, p.width, p.height);
+        } else {
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
+      });
+
+      // 3. Монетки с текстурой
+      coins.forEach(c => {
+        if (!c.collected) {
+          if (images.coin.complete) {
+            ctx.drawImage(images.coin, c.x - 14, c.y - 14, 28, 28);
+          } else {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffd700';
+            ctx.fill();
+          }
+        }
+      });
+
+      // 4. Текстура Игрока
+      if (images.player.complete) {
+        ctx.drawImage(images.player, player.x, player.y, player.width, player.height);
+      } else {
+        ctx.fillStyle = '#d3bbff';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+      }
+
+      ctx.restore();
+    }
+
+    // Старт
+    generateInitialWorld();
+    requestAnimationFrame(update);
+  </script>
+
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Endless 2D Runner</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #141218;
+      --card-bg: #1d1b20;
+      --primary: #d3bbff;
+      --on-primary: #3b1d71;
+      --text: #ebdcfd;
+    }
+
+    * { 
+      box-sizing: border-box; 
+      margin: 0; 
+      padding: 0; 
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Roboto Flex', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px;
+      overflow-x: hidden;
+    }
+
+    .header-bar {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .back-btn {
+      background-color: var(--card-bg);
+      color: var(--primary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .score-board {
+      font-size: 16px;
+      font-weight: 800;
+      color: #ffd700;
+    }
+
+    .game-box {
+      width: 100%;
+      max-width: 800px;
+      height: 50vh;
+      max-height: 400px;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #0f172a;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      position: relative;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    /* Управление под смартфонами — одна гигантская кнопка прыжка */
+    .touch-controls {
+      display: flex;
+      width: 100%;
+      max-width: 800px;
+      margin-top: 14px;
+      justify-content: center;
+    }
+
+    .jump-btn {
+      width: 100%;
+      max-width: 400px;
+      height: 64px;
+      border-radius: 9999px;
+      background-color: var(--primary);
+      color: var(--on-primary);
+      font-weight: 1000;
+      font-size: 20px;
+      border: none;
+      box-shadow: 0 4px 15px rgba(211, 187, 255, 0.3);
+      cursor: pointer;
+    }
+
+    .jump-btn:active {
+      transform: scale(0.97);
+    }
+
+    .restart-overlay {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.8);
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .restart-overlay h2 {
+      font-size: 26px;
+      color: #f87171;
+    }
+
+    .restart-btn {
+      background-color: var(--primary);
+      color: var(--on-primary);
+      padding: 12px 28px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header-bar">
+    <a href="../" class="back-btn">← На главную</a>
+    <div class="score-board">🪙 Монеты: <span id="score">0</span></div>
+  </div>
+
+  <div class="game-box">
+    <canvas id="canvas"></canvas>
+    
+    <div class="restart-overlay" id="restart-screen">
+      <h2>Упал в пропасть!</h2>
+      <button class="restart-btn" id="restart-btn">🔄 Играть снова</button>
+    </div>
+  </div>
+
+  <div class="touch-controls">
+    <button class="jump-btn" id="btn-jump">🚀 ПРЫЖОК</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const restartScreen = document.getElementById('restart-screen');
+    const restartBtn = document.getElementById('restart-btn');
+
+    canvas.width = 800;
+    canvas.height = 400;
+
+    // === 1. ЗАГРУЗКА ТЕКСТУР И КАРТИНОК ===
+    // Вы можете положить свои картинки в папку img/ или использовать готовые внешние
+    const images = {
+      player: new Image(),
+      coin: new Image(),
+      block: new Image(),
+      bg: new Image()
+    };
+
+    images.player.src = 'img/player.png';
+    images.player.onerror = () => { images.player.src = 'https://cdn-icons-png.flaticon.com/512/616/616438.png'; }; // Иконка кота/героя
+
+    images.coin.src = 'img/coin.png';
+    images.coin.onerror = () => { images.coin.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'; }; // Иконка монетки
+
+    images.block.src = 'img/block.png';
+    images.block.onerror = () => { images.block.src = 'https://img.freepik.com/free-vector/stone-ground-texture_1048-2023.jpg'; }; // Текстура земли
+
+    images.bg.src = 'img/bg.png';
+    images.bg.onerror = () => { images.bg.src = 'https://img.freepik.com/free-vector/pixel-art-game-location-with-mountains-sky_107791-8656.jpg'; }; // Фон
+
+    let score = 0;
+    let gameOver = false;
+    let bgScrollX = 0;
+
+    // Игрок (Автобег)
+    const player = {
+      x: 100,
+      y: 200,
+      width: 40,
+      height: 40,
+      speed: 7.5, // Скорость автобега
+      vy: 0,
+      jumpPower: -13,
+      gravity: 0.65,
+      grounded: false
+    };
+
+    // Массивы блоков и монет
+    let platforms = [];
+    let coins = [];
+    let lastPlatformX = 0;
+
+    // === 2. БЕСКОНЕЧНАЯ ГЕНЕРАЦИЯ МИРА ===
+    function generateInitialWorld() {
+      platforms = [
+        { x: 0, y: 300, width: 400, height: 100 } // Начальная безопасная площадка
+      ];
+      lastPlatformX = 400;
+
+      for (let i = 0; i < 5; i++) {
+        spawnNextPlatform();
+      }
+    }
+
+    function spawnNextPlatform() {
+      // Случайная ширина пропасти (80px - 160px)
+      const gap = Math.floor(Math.random() * 80) + 80;
+      // Случайная ширина островка (180px - 350px)
+      const width = Math.floor(Math.random() * 170) + 180;
+      // Высота платформы
+      const y = Math.floor(Math.random() * 80) + 260;
+
+      const newX = lastPlatformX + gap;
+      platforms.push({ x: newX, y: y, width: width, height: 140 });
+
+      // Генерация монеток над новой платформой
+      if (Math.random() > 0.3) {
+        coins.push({
+          x: newX + width / 2,
+          y: y - 40,
+          collected: false
+        });
+      }
+
+      lastPlatformX = newX + width;
+    }
+
+    // === 3. УПРАВЛЕНИЕ (ПРЫЖОК) ===
+    function doJump() {
+      if (player.grounded && !gameOver) {
+        player.vy = player.jumpPower;
+        player.grounded = false;
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
+        e.preventDefault();
+        doJump();
+      }
+    });
+
+    const jumpBtn = document.getElementById('btn-jump');
+    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
+    jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); doJump(); });
+
+    // Прыжок при тапе по самому экрану игры
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
+
+    // === 4. ПЕРЕЗАПУСК ===
+    function resetGame() {
+      player.x = 100;
+      player.y = 200;
+      player.vy = 0;
+      score = 0;
+      scoreEl.innerText = score;
+      gameOver = false;
+      bgScrollX = 0;
+      generateInitialWorld();
+      restartScreen.style.display = 'none';
+      requestAnimationFrame(update);
+    }
+
+    restartBtn.addEventListener('click', resetGame);
+
+    // === 5. ИГРОВОЙ ЦИКЛ ===
+    function update() {
+      if (gameOver) return;
+
+      // Авто-бег вперед
+      player.x += player.speed;
+      player.vy += player.gravity;
+      player.y += player.vy;
+
+      // Движущийся задний фон (Параллакс)
+      bgScrollX = player.x * 0.3;
+
+      player.grounded = false;
+
+      // Проверка наступания на платформы
+      platforms.forEach(p => {
+        if (
+          player.x + player.width > p.x &&
+          player.x < p.x + p.width &&
+          player.y + player.height >= p.y &&
+          player.y + player.height <= p.y + 18 &&
+          player.vy >= 0
+        ) {
+          player.grounded = true;
+          player.vy = 0;
+          player.y = p.y - player.height;
+        }
+      });
+
+      // Сбор монет
+      coins.forEach(c => {
+        if (!c.collected && Math.abs((player.x + 20) - c.x) < 30 && Math.abs((player.y + 20) - c.y) < 30) {
+          c.collected = true;
+          score += 10;
+          scoreEl.innerText = score;
+        }
+      });
+
+      // Генерация новых островков при движении вперед
+      if (player.x + 600 > lastPlatformX) {
+        spawnNextPlatform();
+      }
+
+      // Удаление старых зашедших за экран блоков для экономии памяти
+      platforms = platforms.filter(p => p.x + p.width > player.x - 300);
+      coins = coins.filter(c => c.x > player.x - 300);
+
+      // Падение в яму
+      if (player.y > canvas.height + 60) {
+        gameOver = true;
+        restartScreen.style.display = 'flex';
+      }
+
+      draw();
+
+      if (!gameOver) requestAnimationFrame(update);
+    }
+
+    // === 6. ОТРИСОВКА С ТЕКСТУРАМИ ===
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Камера следит за бегущим персонажем
+      ctx.save();
+      const cameraX = -player.x + 100;
+
+      // 1. Движущийся Задний Фон
+      if (images.bg.complete) {
+        const bgWidth = canvas.width;
+        const offsetX = -(bgScrollX % bgWidth);
+        ctx.drawImage(images.bg, offsetX, 0, bgWidth, canvas.height);
+        ctx.drawImage(images.bg, offsetX + bgWidth, 0, bgWidth, canvas.height);
+      }
+
+      ctx.translate(cameraX, 0);
+
+      // 2. Блоки земли (Платформы) с текстурой
+      platforms.forEach(p => {
+        if (images.block.complete) {
+          ctx.drawImage(images.block, p.x, p.y, p.width, p.height);
+        } else {
+          ctx.fillStyle = '#22c55e';
+          ctx.fillRect(p.x, p.y, p.width, p.height);
+        }
+      });
+
+      // 3. Монетки с текстурой
+      coins.forEach(c => {
+        if (!c.collected) {
+          if (images.coin.complete) {
+            ctx.drawImage(images.coin, c.x - 14, c.y - 14, 28, 28);
+          } else {
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffd700';
+            ctx.fill();
+          }
+        }
+      });
+
+      // 4. Текстура Игрока
+      if (images.player.complete) {
+        ctx.drawImage(images.player, player.x, player.y, player.width, player.height);
+      } else {
+        ctx.fillStyle = '#d3bbff';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+      }
+
+      ctx.restore();
+    }
+
+    // Старт
+    generateInitialWorld();
+    requestAnimationFrame(update);
+  </script>
+
+</body>
+</html>
