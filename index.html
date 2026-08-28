@@ -1,0 +1,101 @@
+l<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Игровой Хаб</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #141218;
+      --card-bg: #1d1b20;
+      --primary: #d3bbff;
+      --on-primary: #3b1d71;
+      --text: #ebdcfd;
+      --subtext: #958da1;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Roboto Flex', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .container { width: 100%; max-width: 800px; }
+
+    .header-bar {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .header-title { font-size: 24px; font-weight: 1000; }
+
+    .server-capsule {
+      background-color: var(--card-bg);
+      color: var(--subtext);
+      text-decoration: none;
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(211, 187, 255, 0.15);
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+    }
+
+    .game-card {
+      background-color: var(--card-bg);
+      border-radius: 20px;
+      padding: 20px;
+      text-decoration: none;
+      color: var(--text);
+      border: 1px solid rgba(211, 187, 255, 0.1);
+      transition: transform 0.2s;
+    }
+
+    .game-card:active { transform: scale(0.98); }
+    .game-card h2 { font-size: 20px; color: var(--primary); margin-bottom: 6px; }
+    .game-card p { color: var(--subtext); font-size: 13px; }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header-bar">
+      <h1 class="header-title">🎮 Мои Игры</h1>
+      <a href="server.html" class="server-capsule">📊 Инфо о сервере</a>
+    </div>
+
+    <div class="games-grid">
+      <a href="clicker/" class="game-card">
+        <h2>👆 Кликер</h2>
+        <p>Качай левел и кликай монеты</p>
+      </a>
+
+      <a href="platformer/" class="game-card">
+        <h2>🏃 2D Платформер</h2>
+        <p>Прыгай по пропастям и собирай монеты</p>
+      </a>
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Характеристики сервера и системы</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg: #141218;
+      --card-bg: #1d1b20;
+      --primary: #d3bbff;
+      --on-primary: #3b1d71;
+      --text: #ebdcfd;
+      --subtext: #958da1;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Roboto Flex', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+    }
+
+    .header-bar {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .back-btn {
+      background-color: var(--card-bg);
+      color: var(--primary);
+      text-decoration: none;
+      padding: 8px 16px;
+      border-radius: 9999px;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .specs-card {
+      background-color: var(--card-bg);
+      border-radius: 20px;
+      padding: 24px;
+      border: 1px solid rgba(211, 187, 255, 0.15);
+    }
+
+    h1 {
+      font-size: 22px;
+      color: var(--primary);
+      font-weight: 1000;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .specs-section {
+      font-size: 14px;
+      color: var(--primary);
+      font-weight: 800;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      padding-bottom: 6px;
+    }
+
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 8px 0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .spec-row span:first-child {
+      color: var(--subtext);
+    }
+
+    .spec-row span:last-child {
+      font-weight: 600;
+      color: var(--text);
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header-bar">
+      <a href="index.html" class="back-btn">← На главную</a>
+    </div>
+
+    <div class="specs-card">
+      <h1>🖥️ Мониторинг Хостинга & Системы</h1>
+
+      <div class="specs-section">🌐 Параметры Хостинга</div>
+      <div class="spec-row"><span>Серверная сеть:</span> <span>Netlify Global High-Speed CDN</span></div>
+      <div class="spec-row"><span>Тип архитектуры:</span> <span>Serverless / Edge Nodes</span></div>
+      <div class="spec-row"><span>Задержка (Ping):</span> <span id="ping-val">Считаем...</span></div>
+
+      <div class="specs-section">📱 Ваше Железо (Клиент)</div>
+      <div class="spec-row"><span>Ядра процессора:</span> <span id="cpu-val">Загрузка...</span></div>
+      <div class="spec-row"><span>Оперативная память:</span> <span id="ram-val">Загрузка...</span></div>
+      <div class="spec-row"><span>Видеокарта (GPU):</span> <span id="gpu-val">Загрузка...</span></div>
+      <div class="spec-row"><span>Разрешение экрана:</span> <span id="screen-val">Загрузка...</span></div>
+      <div class="spec-row"><span>ОС / Платформа:</span> <span id="os-val">Загрузка...</span></div>
+    </div>
+  </div>
+
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // 1. Процессор
+      document.getElementById('cpu-val').innerText = (navigator.hardwareConcurrency || 'Н/Д') + " ядер";
+
+      // 2. ОЗУ
+      document.getElementById('ram-val').innerText = (navigator.deviceMemory ? '~' + navigator.deviceMemory + ' ГБ' : 'Ограничено браузером');
+
+      // 3. Платформа
+      document.getElementById('os-val').innerText = navigator.platform;
+
+      // 4. Экран
+      document.getElementById('screen-val').innerText = `${window.screen.width}x${window.screen.height} px`;
+
+      // 5. Видеокарта
+      try {
+        const canvas = document.createElement('canvas');
+        const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+        if (gl) {
+          const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+          const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+          document.getElementById('gpu-val').innerText = renderer.replace(/ANGLE \((.*)\)/, "$1");
+        } else {
+          document.getElementById('gpu-val').innerText = 'Не определено';
+        }
+      } catch (e) {
+        document.getElementById('gpu-val').innerText = 'Заблокировано браузером';
+      }
+
+      // 6. Замер Пинга
+      const start = performance.now();
+      fetch(window.location.href, { method: 'HEAD', cache: 'no-store' })
+        .then(() => {
+          document.getElementById('ping-val').innerText = Math.round(performance.now() - start) + ' ms';
+        })
+        .catch(() => {
+          document.getElementById('ping-val').innerText = 'Ошибка';
+        });
+    });
+  </script>
+
+</body>
+</html>
