@@ -1,806 +1,615 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Endless 2D Runner</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SkyHop — платформер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --m3-primary:#6E4AED;
+    --m3-primary-container:#E9DDFF;
+    --m3-on-primary:#FFFFFF;
+    --m3-secondary:#00A896;
+    --m3-secondary-container:#B9F4E8;
+    --m3-tertiary:#FF6F91;
+    --m3-tertiary-container:#FFD9E1;
+    --m3-surface:#FFF8F5;
+    --m3-surface-container:#F1E9FB;
+    --m3-surface-container-high:#E7D9FA;
+    --m3-on-surface:#1D1B20;
+    --m3-on-surface-variant:#4A4458;
+    --m3-outline:#948F99;
+    --m3-error:#BA1A1A;
+    --spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --spring-soft: cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0;padding:0;min-height:100%;
+    background:
+      radial-gradient(circle at 12% 8%, var(--m3-tertiary-container) 0%, transparent 40%),
+      radial-gradient(circle at 90% 0%, var(--m3-secondary-container) 0%, transparent 45%),
+      linear-gradient(180deg, var(--m3-primary-container) 0%, var(--m3-surface) 55%);
+    font-family:'Inter',sans-serif;
+    color:var(--m3-on-surface);
+    display:flex;justify-content:center;
+    padding:20px 14px 40px;
+  }
+  .app{width:100%;max-width:860px;}
 
-  <style>
-    :root {
-      --bg: #141218;
-      --card-bg: #1d1b20;
-      --primary: #d3bbff;
-      --on-primary: #3b1d71;
-      --text: #ebdcfd;
-    }
+  /* Top app bar */
+  .topbar{
+    display:flex;align-items:center;justify-content:space-between;
+    gap:12px;margin-bottom:16px;flex-wrap:wrap;
+  }
+  .wordmark{
+    font-family:'Poppins',sans-serif;font-weight:800;font-size:28px;
+    letter-spacing:-0.5px;color:var(--m3-primary);
+    display:flex;align-items:center;gap:8px;
+  }
+  .wordmark .dot{
+    width:14px;height:14px;border-radius:40% 60% 55% 45%/50% 45% 55% 50%;
+    background:var(--m3-tertiary);display:inline-block;
+    animation:float 2.4s var(--spring-soft) infinite;
+  }
+  @keyframes float{
+    0%,100%{transform:translateY(0) rotate(0deg);}
+    50%{transform:translateY(-4px) rotate(20deg);}
+  }
+  .chips{display:flex;gap:10px;align-items:center;}
+  .chip{
+    display:flex;align-items:center;gap:6px;
+    background:var(--m3-surface-container);
+    border:1px solid var(--m3-outline);
+    border-radius:100px;padding:8px 14px;
+    font-weight:600;font-size:14px;color:var(--m3-on-surface);
+    transition:transform .3s var(--spring);
+  }
+  .chip.coin{background:var(--m3-tertiary-container);border-color:transparent;}
+  .chip.life{background:var(--m3-secondary-container);border-color:transparent;}
+  .chip.pulse{animation:chipPulse .4s var(--spring);}
+  @keyframes chipPulse{0%{transform:scale(1);}45%{transform:scale(1.18);}100%{transform:scale(1);}}
 
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
+  .icon-btn{
+    width:44px;height:44px;border-radius:16px;border:none;
+    background:var(--m3-surface-container-high);color:var(--m3-primary);
+    font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    transition:transform .25s var(--spring), border-radius .25s var(--spring), background .2s;
+  }
+  .icon-btn:hover{background:var(--m3-primary-container);border-radius:22px;}
+  .icon-btn:active{transform:scale(0.88);}
 
-    body {
-      font-family: 'Roboto Flex', sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px;
-      overflow-x: hidden;
-    }
+  /* Game stage card */
+  .stage-wrap{position:relative;}
+  .stage-card{
+    position:relative;overflow:hidden;
+    background:linear-gradient(180deg,#BFE3FF 0%, #E9F6FF 55%, #F3FBFF 100%);
+    border-radius:32px;
+    box-shadow:0 2px 6px rgba(29,27,32,0.08), 0 12px 28px rgba(110,74,237,0.18);
+    border:1px solid rgba(255,255,255,0.6);
+  }
+  .stage-card::before{
+    content:'';position:absolute;top:-60px;right:-60px;width:180px;height:180px;
+    background:var(--m3-primary);opacity:.14;
+    border-radius:42% 58% 63% 37% / 41% 44% 56% 59%;
+  }
+  .stage-card::after{
+    content:'';position:absolute;bottom:-70px;left:-50px;width:200px;height:200px;
+    background:var(--m3-tertiary);opacity:.12;
+    border-radius:58% 42% 37% 63% / 55% 48% 52% 45%;
+  }
+  canvas{display:block;width:100%;height:auto;position:relative;z-index:1;}
 
-    .header-bar {
-      width: 100%;
-      max-width: 800px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
+  .hint{
+    text-align:center;color:var(--m3-on-surface-variant);font-size:13px;
+    margin-top:10px;font-weight:500;
+  }
+  .hint b{color:var(--m3-primary);font-weight:700;}
 
-    .back-btn {
-      background-color: var(--card-bg);
-      color: var(--primary);
-      text-decoration: none;
-      padding: 8px 16px;
-      border-radius: 9999px;
-      font-weight: 800;
-      font-size: 13px;
-    }
+  /* Touch controls */
+  .controls{
+    display:flex;justify-content:space-between;align-items:flex-end;
+    margin-top:20px;gap:16px;
+  }
+  .dpad{display:flex;gap:10px;}
+  .ctl-btn{
+    width:64px;height:64px;border:none;cursor:pointer;
+    background:var(--m3-surface-container-high);color:var(--m3-primary);
+    font-size:24px;font-weight:700;
+    border-radius:26px;
+    box-shadow:0 4px 10px rgba(29,27,32,0.12);
+    transition:transform .18s var(--spring), border-radius .18s var(--spring), background .18s;
+    -webkit-user-select:none;user-select:none;touch-action:none;
+  }
+  .ctl-btn:active, .ctl-btn.pressed{
+    transform:scale(0.86);
+    border-radius:40%;
+    background:var(--m3-primary-container);
+  }
+  .jump-btn{
+    width:88px;height:88px;border:none;cursor:pointer;
+    background:var(--m3-tertiary);color:#fff;font-family:'Poppins',sans-serif;
+    font-weight:700;font-size:14px;border-radius:32px;
+    box-shadow:0 6px 16px rgba(255,111,145,0.45);
+    transition:transform .18s var(--spring), border-radius .18s var(--spring);
+    -webkit-user-select:none;user-select:none;touch-action:none;
+  }
+  .jump-btn:active, .jump-btn.pressed{
+    transform:scale(0.88);
+    border-radius:50%;
+  }
 
-    .score-board {
-      font-size: 16px;
-      font-weight: 800;
-      color: #ffd700;
-    }
-
-    .game-box {
-      width: 100%;
-      max-width: 800px;
-      height: 50vh;
-      max-height: 400px;
-      border-radius: 20px;
-      overflow: hidden;
-      background: #0f172a;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      position: relative;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    /* Управление под смартфонами — одна гигантская кнопка прыжка */
-    .touch-controls {
-      display: flex;
-      width: 100%;
-      max-width: 800px;
-      margin-top: 14px;
-      justify-content: center;
-    }
-
-    .jump-btn {
-      width: 100%;
-      max-width: 400px;
-      height: 64px;
-      border-radius: 9999px;
-      background-color: var(--primary);
-      color: var(--on-primary);
-      font-weight: 1000;
-      font-size: 20px;
-      border: none;
-      box-shadow: 0 4px 15px rgba(211, 187, 255, 0.3);
-      cursor: pointer;
-    }
-
-    .jump-btn:active {
-      transform: scale(0.97);
-    }
-
-    .restart-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .restart-overlay h2 {
-      font-size: 26px;
-      color: #f87171;
-    }
-
-    .restart-btn {
-      background-color: var(--primary);
-      color: var(--on-primary);
-      padding: 12px 28px;
-      border-radius: 9999px;
-      font-weight: 800;
-      font-size: 16px;
-      border: none;
-      cursor: pointer;
-    }
-  </style>
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(29,27,32,0.45);
+    display:none;align-items:center;justify-content:center;z-index:50;
+    padding:20px;
+  }
+  .modal-overlay.show{display:flex;}
+  .modal{
+    background:var(--m3-surface);border-radius:28px;
+    padding:32px 28px;max-width:360px;width:100%;text-align:center;
+    box-shadow:0 20px 50px rgba(29,27,32,0.35);
+    transform:scale(0.85);opacity:0;
+    animation:modalIn .4s var(--spring) forwards;
+  }
+  @keyframes modalIn{to{transform:scale(1);opacity:1;}}
+  .modal .emoji{font-size:52px;display:block;margin-bottom:8px;}
+  .modal h2{
+    font-family:'Poppins',sans-serif;font-size:24px;margin:0 0 8px;color:var(--m3-primary);
+  }
+  .modal p{color:var(--m3-on-surface-variant);margin:0 0 22px;font-size:15px;line-height:1.4;}
+  .modal-actions{display:flex;flex-direction:column;gap:10px;}
+  .btn{
+    border:none;border-radius:100px;padding:14px 20px;
+    font-family:'Inter',sans-serif;font-weight:700;font-size:15px;cursor:pointer;
+    transition:transform .2s var(--spring), border-radius .2s var(--spring);
+  }
+  .btn.filled{background:var(--m3-primary);color:var(--m3-on-primary);}
+  .btn.filled:active{transform:scale(0.95);border-radius:20px;}
+  .btn.tonal{background:var(--m3-secondary-container);color:#00332E;}
+  .btn.tonal:active{transform:scale(0.95);border-radius:20px;}
+</style>
 </head>
 <body>
-
-  <div class="header-bar">
-    <a href="../" class="back-btn">← На главную</a>
-    <div class="score-board">🪙 Монеты: <span id="score">0</span></div>
-  </div>
-
-  <div class="game-box">
-    <canvas id="canvas"></canvas>
-    
-    <div class="restart-overlay" id="restart-screen">
-      <h2>Упал в пропасть!</h2>
-      <button class="restart-btn" id="restart-btn">🔄 Играть снова</button>
+<div class="app">
+  <div class="topbar">
+    <div class="wordmark"><span class="dot"></span>SkyHop</div>
+    <div class="chips">
+      <div class="chip coin" id="coinChip">🪙 <span id="coinCount">0</span></div>
+      <div class="chip life" id="lifeChip">❤️ <span id="lifeCount">3</span></div>
+      <button class="icon-btn" id="restartBtn" title="Начать заново">⟲</button>
+      <button class="icon-btn" id="homeBtn" title="В меню">🏠</button>
     </div>
   </div>
 
-  <div class="touch-controls">
-    <button class="jump-btn" id="btn-jump">🚀 ПРЫЖОК</button>
-  </div>
-
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const restartScreen = document.getElementById('restart-screen');
-    const restartBtn = document.getElementById('restart-btn');
-
-    canvas.width = 800;
-    canvas.height = 400;
-
-    // === 1. ЗАГРУЗКА ТЕКСТУР И КАРТИНОК ===
-    // Вы можете положить свои картинки в папку img/ или использовать готовые внешние
-    const images = {
-      player: new Image(),
-      coin: new Image(),
-      block: new Image(),
-      bg: new Image()
-    };
-
-    images.player.src = 'img/player.png';
-    images.player.onerror = () => { images.player.src = 'https://cdn-icons-png.flaticon.com/512/616/616438.png'; }; // Иконка кота/героя
-
-    images.coin.src = 'img/coin.png';
-    images.coin.onerror = () => { images.coin.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'; }; // Иконка монетки
-
-    images.block.src = 'img/block.png';
-    images.block.onerror = () => { images.block.src = 'https://img.freepik.com/free-vector/stone-ground-texture_1048-2023.jpg'; }; // Текстура земли
-
-    images.bg.src = 'img/bg.png';
-    images.bg.onerror = () => { images.bg.src = 'https://img.freepik.com/free-vector/pixel-art-game-location-with-mountains-sky_107791-8656.jpg'; }; // Фон
-
-    let score = 0;
-    let gameOver = false;
-    let bgScrollX = 0;
-
-    // Игрок (Автобег)
-    const player = {
-      x: 100,
-      y: 200,
-      width: 40,
-      height: 40,
-      speed: 7.5, // Скорость автобега
-      vy: 0,
-      jumpPower: -13,
-      gravity: 0.65,
-      grounded: false
-    };
-
-    // Массивы блоков и монет
-    let platforms = [];
-    let coins = [];
-    let lastPlatformX = 0;
-
-    // === 2. БЕСКОНЕЧНАЯ ГЕНЕРАЦИЯ МИРА ===
-    function generateInitialWorld() {
-      platforms = [
-        { x: 0, y: 300, width: 400, height: 100 } // Начальная безопасная площадка
-      ];
-      lastPlatformX = 400;
-
-      for (let i = 0; i < 5; i++) {
-        spawnNextPlatform();
-      }
-    }
-
-    function spawnNextPlatform() {
-      // Случайная ширина пропасти (80px - 160px)
-      const gap = Math.floor(Math.random() * 80) + 80;
-      // Случайная ширина островка (180px - 350px)
-      const width = Math.floor(Math.random() * 170) + 180;
-      // Высота платформы
-      const y = Math.floor(Math.random() * 80) + 260;
-
-      const newX = lastPlatformX + gap;
-      platforms.push({ x: newX, y: y, width: width, height: 140 });
-
-      // Генерация монеток над новой платформой
-      if (Math.random() > 0.3) {
-        coins.push({
-          x: newX + width / 2,
-          y: y - 40,
-          collected: false
-        });
-      }
-
-      lastPlatformX = newX + width;
-    }
-
-    // === 3. УПРАВЛЕНИЕ (ПРЫЖОК) ===
-    function doJump() {
-      if (player.grounded && !gameOver) {
-        player.vy = player.jumpPower;
-        player.grounded = false;
-      }
-    }
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
-        e.preventDefault();
-        doJump();
-      }
-    });
-
-    const jumpBtn = document.getElementById('btn-jump');
-    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
-    jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); doJump(); });
-
-    // Прыжок при тапе по самому экрану игры
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
-
-    // === 4. ПЕРЕЗАПУСК ===
-    function resetGame() {
-      player.x = 100;
-      player.y = 200;
-      player.vy = 0;
-      score = 0;
-      scoreEl.innerText = score;
-      gameOver = false;
-      bgScrollX = 0;
-      generateInitialWorld();
-      restartScreen.style.display = 'none';
-      requestAnimationFrame(update);
-    }
-
-    restartBtn.addEventListener('click', resetGame);
-
-    // === 5. ИГРОВОЙ ЦИКЛ ===
-    function update() {
-      if (gameOver) return;
-
-      // Авто-бег вперед
-      player.x += player.speed;
-      player.vy += player.gravity;
-      player.y += player.vy;
-
-      // Движущийся задний фон (Параллакс)
-      bgScrollX = player.x * 0.3;
-
-      player.grounded = false;
-
-      // Проверка наступания на платформы
-      platforms.forEach(p => {
-        if (
-          player.x + player.width > p.x &&
-          player.x < p.x + p.width &&
-          player.y + player.height >= p.y &&
-          player.y + player.height <= p.y + 18 &&
-          player.vy >= 0
-        ) {
-          player.grounded = true;
-          player.vy = 0;
-          player.y = p.y - player.height;
-        }
-      });
-
-      // Сбор монет
-      coins.forEach(c => {
-        if (!c.collected && Math.abs((player.x + 20) - c.x) < 30 && Math.abs((player.y + 20) - c.y) < 30) {
-          c.collected = true;
-          score += 10;
-          scoreEl.innerText = score;
-        }
-      });
-
-      // Генерация новых островков при движении вперед
-      if (player.x + 600 > lastPlatformX) {
-        spawnNextPlatform();
-      }
-
-      // Удаление старых зашедших за экран блоков для экономии памяти
-      platforms = platforms.filter(p => p.x + p.width > player.x - 300);
-      coins = coins.filter(c => c.x > player.x - 300);
-
-      // Падение в яму
-      if (player.y > canvas.height + 60) {
-        gameOver = true;
-        restartScreen.style.display = 'flex';
-      }
-
-      draw();
-
-      if (!gameOver) requestAnimationFrame(update);
-    }
-
-    // === 6. ОТРИСОВКА С ТЕКСТУРАМИ ===
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Камера следит за бегущим персонажем
-      ctx.save();
-      const cameraX = -player.x + 100;
-
-      // 1. Движущийся Задний Фон
-      if (images.bg.complete) {
-        const bgWidth = canvas.width;
-        const offsetX = -(bgScrollX % bgWidth);
-        ctx.drawImage(images.bg, offsetX, 0, bgWidth, canvas.height);
-        ctx.drawImage(images.bg, offsetX + bgWidth, 0, bgWidth, canvas.height);
-      }
-
-      ctx.translate(cameraX, 0);
-
-      // 2. Блоки земли (Платформы) с текстурой
-      platforms.forEach(p => {
-        if (images.block.complete) {
-          ctx.drawImage(images.block, p.x, p.y, p.width, p.height);
-        } else {
-          ctx.fillStyle = '#22c55e';
-          ctx.fillRect(p.x, p.y, p.width, p.height);
-        }
-      });
-
-      // 3. Монетки с текстурой
-      coins.forEach(c => {
-        if (!c.collected) {
-          if (images.coin.complete) {
-            ctx.drawImage(images.coin, c.x - 14, c.y - 14, 28, 28);
-          } else {
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffd700';
-            ctx.fill();
-          }
-        }
-      });
-
-      // 4. Текстура Игрока
-      if (images.player.complete) {
-        ctx.drawImage(images.player, player.x, player.y, player.width, player.height);
-      } else {
-        ctx.fillStyle = '#d3bbff';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-      }
-
-      ctx.restore();
-    }
-
-    // Старт
-    generateInitialWorld();
-    requestAnimationFrame(update);
-  </script>
-
-</body>
-</html>
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Endless 2D Runner</title>
-  
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto+Flex:opsz,wght@8..144,400;600;800;1000&display=swap" rel="stylesheet">
-
-  <style>
-    :root {
-      --bg: #141218;
-      --card-bg: #1d1b20;
-      --primary: #d3bbff;
-      --on-primary: #3b1d71;
-      --text: #ebdcfd;
-    }
-
-    * { 
-      box-sizing: border-box; 
-      margin: 0; 
-      padding: 0; 
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: manipulation;
-    }
-
-    body {
-      font-family: 'Roboto Flex', sans-serif;
-      background-color: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 12px;
-      overflow-x: hidden;
-    }
-
-    .header-bar {
-      width: 100%;
-      max-width: 800px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-
-    .back-btn {
-      background-color: var(--card-bg);
-      color: var(--primary);
-      text-decoration: none;
-      padding: 8px 16px;
-      border-radius: 9999px;
-      font-weight: 800;
-      font-size: 13px;
-    }
-
-    .score-board {
-      font-size: 16px;
-      font-weight: 800;
-      color: #ffd700;
-    }
-
-    .game-box {
-      width: 100%;
-      max-width: 800px;
-      height: 50vh;
-      max-height: 400px;
-      border-radius: 20px;
-      overflow: hidden;
-      background: #0f172a;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-      position: relative;
-    }
-
-    canvas {
-      width: 100%;
-      height: 100%;
-      display: block;
-    }
-
-    /* Управление под смартфонами — одна гигантская кнопка прыжка */
-    .touch-controls {
-      display: flex;
-      width: 100%;
-      max-width: 800px;
-      margin-top: 14px;
-      justify-content: center;
-    }
-
-    .jump-btn {
-      width: 100%;
-      max-width: 400px;
-      height: 64px;
-      border-radius: 9999px;
-      background-color: var(--primary);
-      color: var(--on-primary);
-      font-weight: 1000;
-      font-size: 20px;
-      border: none;
-      box-shadow: 0 4px 15px rgba(211, 187, 255, 0.3);
-      cursor: pointer;
-    }
-
-    .jump-btn:active {
-      transform: scale(0.97);
-    }
-
-    .restart-overlay {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background: rgba(0,0,0,0.8);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 14px;
-    }
-
-    .restart-overlay h2 {
-      font-size: 26px;
-      color: #f87171;
-    }
-
-    .restart-btn {
-      background-color: var(--primary);
-      color: var(--on-primary);
-      padding: 12px 28px;
-      border-radius: 9999px;
-      font-weight: 800;
-      font-size: 16px;
-      border: none;
-      cursor: pointer;
-    }
-  </style>
-</head>
-<body>
-
-  <div class="header-bar">
-    <a href="../" class="back-btn">← На главную</a>
-    <div class="score-board">🪙 Монеты: <span id="score">0</span></div>
-  </div>
-
-  <div class="game-box">
-    <canvas id="canvas"></canvas>
-    
-    <div class="restart-overlay" id="restart-screen">
-      <h2>Упал в пропасть!</h2>
-      <button class="restart-btn" id="restart-btn">🔄 Играть снова</button>
+  <div class="stage-wrap">
+    <div class="stage-card">
+      <canvas id="game" width="800" height="450"></canvas>
     </div>
   </div>
+  <p class="hint">Управление: <b>← →</b> или <b>A D</b> — движение, <b>Пробел / ↑</b> — прыжок. Собирай монеты и доберись до флага 🚩</p>
 
-  <div class="touch-controls">
-    <button class="jump-btn" id="btn-jump">🚀 ПРЫЖОК</button>
+  <div class="controls">
+    <div class="dpad">
+      <button class="ctl-btn" id="leftBtn">←</button>
+      <button class="ctl-btn" id="rightBtn">→</button>
+    </div>
+    <button class="jump-btn" id="jumpBtn">ПРЫЖОК</button>
   </div>
+</div>
 
-  <script>
-    const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
-    const scoreEl = document.getElementById('score');
-    const restartScreen = document.getElementById('restart-screen');
-    const restartBtn = document.getElementById('restart-btn');
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <span class="emoji" id="modalEmoji">🎉</span>
+    <h2 id="modalTitle">Уровень пройден!</h2>
+    <p id="modalText">Отличный прыжок!</p>
+    <div class="modal-actions" id="modalActions"></div>
+  </div>
+</div>
 
-    canvas.width = 800;
-    canvas.height = 400;
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
 
-    // === 1. ЗАГРУЗКА ТЕКСТУР И КАРТИНОК ===
-    // Вы можете положить свои картинки в папку img/ или использовать готовые внешние
-    const images = {
-      player: new Image(),
-      coin: new Image(),
-      block: new Image(),
-      bg: new Image()
-    };
+const COLORS = {
+  primary:'#6E4AED', primaryDark:'#5533C9',
+  secondary:'#00A896', secondaryDark:'#00786B',
+  tertiary:'#FF6F91', tertiaryDark:'#E14F72',
+  ground:'#8D6E63', groundTop:'#6FBF73',
+  outline:'#1D1B20'
+};
 
-    images.player.src = 'img/player.png';
-    images.player.onerror = () => { images.player.src = 'https://cdn-icons-png.flaticon.com/512/616/616438.png'; }; // Иконка кота/героя
+let keys = {left:false, right:false, jump:false};
+let coins = 0, lives = 3;
+let currentLevelIndex = 0;
+let camX = 0;
+let gameOverFlag = false;
 
-    images.coin.src = 'img/coin.png';
-    images.coin.onerror = () => { images.coin.src = 'https://cdn-icons-png.flaticon.com/512/1828/1828884.png'; }; // Иконка монетки
+const GRAVITY = 0.62, JUMP_VEL = -13.2, MOVE_ACCEL = 0.85, MAX_SPEED = 4.6, FRICTION = 0.82;
 
-    images.block.src = 'img/block.png';
-    images.block.onerror = () => { images.block.src = 'https://img.freepik.com/free-vector/stone-ground-texture_1048-2023.jpg'; }; // Текстура земли
+function makeLevel(def){
+  return {
+    width: def.width,
+    platforms: def.platforms,
+    coins: def.coins.map(c=>({x:c[0],y:c[1],r:10,collected:false})),
+    enemies: def.enemies.map(e=>({x:e[0],y:e[1],w:30,h:26,minX:e[2],maxX:e[3],vx:1.6,dir:1})),
+    flag: {x: def.flag[0], y: def.flag[1], w:14, h:52},
+    spawn: {x: def.spawn[0], y: def.spawn[1]}
+  };
+}
 
-    images.bg.src = 'img/bg.png';
-    images.bg.onerror = () => { images.bg.src = 'https://img.freepik.com/free-vector/pixel-art-game-location-with-mountains-sky_107791-8656.jpg'; }; // Фон
+const levels = [
+  makeLevel({
+    width: 1500,
+    spawn:[40,330],
+    platforms:[
+      [0,400,300,50],
+      [340,400,200,50],
+      [420,320,140,20],
+      [620,400,260,50],
+      [720,280,120,20],
+      [900,400,120,50],
+      [1060,340,160,20],
+      [1260,400,240,50],
+    ],
+    coins:[[460,280],[500,280],[540,280],[760,240],[800,240],[1090,300],[1130,300],[1170,300],[1320,360],[1360,360],[1400,360]],
+    enemies:[[650,368,620,850],[920,368,900,1000]],
+    flag:[1440,340]
+  }),
+  makeLevel({
+    width: 1700,
+    spawn:[40,330],
+    platforms:[
+      [0,400,240,50],
+      [300,400,120,50],
+      [470,340,120,20],
+      [630,400,140,50],
+      [810,280,140,20],
+      [990,400,120,50],
+      [1140,340,120,20],
+      [1300,260,140,20],
+      [1480,400,220,50],
+    ],
+    coins:[[500,300],[540,300],[840,240],[880,240],[920,240],[1170,300],[1330,220],[1370,220],[1550,360],[1590,360],[1630,360]],
+    enemies:[[330,368,300,420],[660,368,630,770],[1010,368,990,1110],[1500,368,1480,1700]],
+    flag:[1660,340]
+  })
+];
 
-    let score = 0;
-    let gameOver = false;
-    let bgScrollX = 0;
+let level = levels[currentLevelIndex];
 
-    // Игрок (Автобег)
-    const player = {
-      x: 100,
-      y: 200,
-      width: 40,
-      height: 40,
-      speed: 7.5, // Скорость автобега
-      vy: 0,
-      jumpPower: -13,
-      gravity: 0.65,
-      grounded: false
-    };
+const player = {
+  x:0,y:0,w:32,h:40,vx:0,vy:0,onGround:false,facing:1,squash:1
+};
 
-    // Массивы блоков и монет
-    let platforms = [];
-    let coins = [];
-    let lastPlatformX = 0;
+function resetPlayerToSpawn(){
+  player.x = level.spawn.x;
+  player.y = level.spawn.y;
+  player.vx = 0; player.vy = 0;
+  player.squash = 1;
+}
 
-    // === 2. БЕСКОНЕЧНАЯ ГЕНЕРАЦИЯ МИРА ===
-    function generateInitialWorld() {
-      platforms = [
-        { x: 0, y: 300, width: 400, height: 100 } // Начальная безопасная площадка
-      ];
-      lastPlatformX = 400;
+function loadLevel(idx){
+  currentLevelIndex = idx;
+  level = levels[idx];
+  level.coins.forEach(c=>c.collected=false);
+  level.enemies.forEach(e=>{e.x=e._ox ?? e.x; e.dir=1;});
+  resetPlayerToSpawn();
+}
 
-      for (let i = 0; i < 5; i++) {
-        spawnNextPlatform();
+function rectsOverlap(ax,ay,aw,ah,bx,by,bw,bh){
+  return ax < bx+bw && ax+aw > bx && ay < by+bh && ay+ah > by;
+}
+
+function updatePlayer(){
+  if(keys.left){ player.vx -= MOVE_ACCEL; player.facing=-1; }
+  if(keys.right){ player.vx += MOVE_ACCEL; player.facing=1; }
+  if(!keys.left && !keys.right){ player.vx *= FRICTION; }
+  player.vx = Math.max(-MAX_SPEED, Math.min(MAX_SPEED, player.vx));
+
+  if(keys.jump && player.onGround){
+    player.vy = JUMP_VEL;
+    player.onGround = false;
+    player.squash = 1.35;
+  }
+
+  player.vy += GRAVITY;
+  if(player.vy > 16) player.vy = 16;
+
+  // horizontal move + collide
+  player.x += player.vx;
+  for(const p of level.platforms){
+    if(rectsOverlap(player.x,player.y,player.w,player.h,p[0],p[1],p[2],p[3])){
+      if(player.vx > 0) player.x = p[0]-player.w;
+      else if(player.vx < 0) player.x = p[0]+p[2];
+      player.vx = 0;
+    }
+  }
+  player.x = Math.max(0, Math.min(level.width-player.w, player.x));
+
+  // vertical move + collide
+  player.onGround = false;
+  player.y += player.vy;
+  for(const p of level.platforms){
+    if(rectsOverlap(player.x,player.y,player.w,player.h,p[0],p[1],p[2],p[3])){
+      if(player.vy > 0){
+        player.y = p[1]-player.h;
+        player.vy = 0;
+        player.onGround = true;
+      } else if(player.vy < 0){
+        player.y = p[1]+p[3];
+        player.vy = 0;
       }
     }
+  }
 
-    function spawnNextPlatform() {
-      // Случайная ширина пропасти (80px - 160px)
-      const gap = Math.floor(Math.random() * 80) + 80;
-      // Случайная ширина островка (180px - 350px)
-      const width = Math.floor(Math.random() * 170) + 180;
-      // Высота платформы
-      const y = Math.floor(Math.random() * 80) + 260;
+  // squash/stretch recovery
+  if(player.onGround && player.squash < 1) player.squash += 0.08;
+  if(player.squash > 1) player.squash -= 0.05;
+  player.squash = Math.max(0.65, Math.min(1.35, player.squash));
 
-      const newX = lastPlatformX + gap;
-      platforms.push({ x: newX, y: y, width: width, height: 140 });
+  // fell off world
+  if(player.y > H+100){
+    loseLife();
+  }
 
-      // Генерация монеток над новой платформой
-      if (Math.random() > 0.3) {
-        coins.push({
-          x: newX + width / 2,
-          y: y - 40,
-          collected: false
-        });
-      }
-
-      lastPlatformX = newX + width;
+  // coins
+  for(const c of level.coins){
+    if(c.collected) continue;
+    const dx = (player.x+player.w/2)-c.x, dy=(player.y+player.h/2)-c.y;
+    if(Math.sqrt(dx*dx+dy*dy) < 26){
+      c.collected = true;
+      coins++;
+      document.getElementById('coinCount').textContent = coins;
+      pulseChip('coinChip');
     }
+  }
 
-    // === 3. УПРАВЛЕНИЕ (ПРЫЖОК) ===
-    function doJump() {
-      if (player.grounded && !gameOver) {
-        player.vy = player.jumpPower;
-        player.grounded = false;
-      }
+  // enemies
+  for(const e of level.enemies){
+    e.x += e.vx * e.dir;
+    if(e.x < e.minX || e.x+e.w > e.maxX) e.dir *= -1;
+    if(rectsOverlap(player.x,player.y,player.w,player.h,e.x,e.y,e.w,e.h)){
+      loseLife();
+      break;
     }
+  }
 
-    window.addEventListener('keydown', (e) => {
-      if (e.key === ' ' || e.key === 'ArrowUp' || e.key === 'w') {
-        e.preventDefault();
-        doJump();
-      }
-    });
+  // flag
+  if(rectsOverlap(player.x,player.y,player.w,player.h, level.flag.x, level.flag.y-52, level.flag.w+10, level.flag.h+52)){
+    onLevelComplete();
+  }
 
-    const jumpBtn = document.getElementById('btn-jump');
-    jumpBtn.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
-    jumpBtn.addEventListener('mousedown', (e) => { e.preventDefault(); doJump(); });
+  // camera
+  camX = Math.max(0, Math.min(level.width-W, player.x - W/2));
+}
 
-    // Прыжок при тапе по самому экрану игры
-    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); doJump(); });
+function pulseChip(id){
+  const el = document.getElementById(id);
+  el.classList.remove('pulse');
+  void el.offsetWidth;
+  el.classList.add('pulse');
+}
 
-    // === 4. ПЕРЕЗАПУСК ===
-    function resetGame() {
-      player.x = 100;
-      player.y = 200;
-      player.vy = 0;
-      score = 0;
-      scoreEl.innerText = score;
-      gameOver = false;
-      bgScrollX = 0;
-      generateInitialWorld();
-      restartScreen.style.display = 'none';
-      requestAnimationFrame(update);
-    }
+function loseLife(){
+  if(gameOverFlag) return;
+  lives--;
+  document.getElementById('lifeCount').textContent = Math.max(lives,0);
+  pulseChip('lifeChip');
+  if(lives <= 0){
+    gameOverFlag = true;
+    showModal('💥','Игра окончена','Монет собрано: '+coins, [
+      {label:'Начать заново', cls:'filled', action: fullRestart},
+      {label:'В меню', cls:'tonal', action: goHome}
+    ]);
+  } else {
+    resetPlayerToSpawn();
+  }
+}
 
-    restartBtn.addEventListener('click', resetGame);
+function onLevelComplete(){
+  if(gameOverFlag) return;
+  gameOverFlag = true;
+  if(currentLevelIndex < levels.length-1){
+    showModal('🎉','Уровень пройден!','Монет собрано: '+coins, [
+      {label:'Следующий уровень', cls:'filled', action: ()=>{ loadLevel(currentLevelIndex+1); gameOverFlag=false; hideModal(); }},
+      {label:'Заново', cls:'tonal', action: ()=>{ loadLevel(currentLevelIndex); gameOverFlag=false; hideModal(); }},
+      {label:'В меню', cls:'tonal', action: goHome}
+    ]);
+  } else {
+    showModal('🏆','Игра пройдена!','Все уровни пройдены! Монет: '+coins, [
+      {label:'Играть снова', cls:'filled', action: fullRestart},
+      {label:'В меню', cls:'tonal', action: goHome}
+    ]);
+  }
+}
 
-    // === 5. ИГРОВОЙ ЦИКЛ ===
-    function update() {
-      if (gameOver) return;
+function fullRestart(){
+  coins = 0; lives = 3;
+  document.getElementById('coinCount').textContent = coins;
+  document.getElementById('lifeCount').textContent = lives;
+  loadLevel(0);
+  gameOverFlag = false;
+  hideModal();
+}
 
-      // Авто-бег вперед
-      player.x += player.speed;
-      player.vy += player.gravity;
-      player.y += player.vy;
+function goHome(){
+  window.location.href = '../index.html';
+}
 
-      // Движущийся задний фон (Параллакс)
-      bgScrollX = player.x * 0.3;
+function showModal(emoji,title,text,actions){
+  document.getElementById('modalEmoji').textContent = emoji;
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalText').textContent = text;
+  const actionsEl = document.getElementById('modalActions');
+  actionsEl.innerHTML='';
+  actions.forEach(a=>{
+    const b = document.createElement('button');
+    b.className = 'btn '+a.cls;
+    b.textContent = a.label;
+    b.onclick = a.action;
+    actionsEl.appendChild(b);
+  });
+  document.getElementById('modalOverlay').classList.add('show');
+}
+function hideModal(){
+  document.getElementById('modalOverlay').classList.remove('show');
+}
 
-      player.grounded = false;
+// --- drawing ---
+function roundRect(x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.arcTo(x+w,y,x+w,y+h,r);
+  ctx.arcTo(x+w,y+h,x,y+h,r);
+  ctx.arcTo(x,y+h,x,y,r);
+  ctx.arcTo(x,y,x+w,y,r);
+  ctx.closePath();
+}
 
-      // Проверка наступания на платформы
-      platforms.forEach(p => {
-        if (
-          player.x + player.width > p.x &&
-          player.x < p.x + p.width &&
-          player.y + player.height >= p.y &&
-          player.y + player.height <= p.y + 18 &&
-          player.vy >= 0
-        ) {
-          player.grounded = true;
-          player.vy = 0;
-          player.y = p.y - player.height;
-        }
-      });
+function drawBackground(){
+  // parallax clouds
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  for(let i=0;i<6;i++){
+    const bx = ((i*380) - camX*0.3) % (W+400) - 200;
+    const by = 50 + (i%3)*40;
+    roundRect(bx,by,110,40,20); ctx.fill();
+    roundRect(bx+40,by-16,70,36,18); ctx.fill();
+  }
+}
 
-      // Сбор монет
-      coins.forEach(c => {
-        if (!c.collected && Math.abs((player.x + 20) - c.x) < 30 && Math.abs((player.y + 20) - c.y) < 30) {
-          c.collected = true;
-          score += 10;
-          scoreEl.innerText = score;
-        }
-      });
+function drawPlatforms(){
+  for(const p of level.platforms){
+    const x = p[0]-camX;
+    if(x+p[2] < -20 || x > W+20) continue;
+    ctx.fillStyle = COLORS.ground;
+    roundRect(x, p[1]+8, p[2], p[3]-8, 14); ctx.fill();
+    ctx.fillStyle = COLORS.groundTop;
+    roundRect(x, p[1], p[2], 18, 14); ctx.fill();
+  }
+}
 
-      // Генерация новых островков при движении вперед
-      if (player.x + 600 > lastPlatformX) {
-        spawnNextPlatform();
-      }
+function drawCoins(){
+  for(const c of level.coins){
+    if(c.collected) continue;
+    const x = c.x - camX;
+    if(x < -20 || x > W+20) continue;
+    ctx.save();
+    ctx.translate(x,c.y);
+    ctx.fillStyle = COLORS.tertiary;
+    ctx.beginPath(); ctx.arc(0,0,10,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.arc(-3,-3,3.5,0,Math.PI*2); ctx.fill();
+    ctx.restore();
+  }
+}
 
-      // Удаление старых зашедших за экран блоков для экономии памяти
-      platforms = platforms.filter(p => p.x + p.width > player.x - 300);
-      coins = coins.filter(c => c.x > player.x - 300);
+function drawEnemies(){
+  for(const e of level.enemies){
+    const x = e.x - camX;
+    if(x+e.w < -20 || x > W+20) continue;
+    ctx.fillStyle = COLORS.primaryDark;
+    roundRect(x,e.y,e.w,e.h,10); ctx.fill();
+    ctx.fillStyle='#fff';
+    ctx.beginPath(); ctx.arc(x+9,e.y+10,3,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+21,e.y+10,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle=COLORS.outline;
+    ctx.beginPath(); ctx.arc(x+9,e.y+10,1.4,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(x+21,e.y+10,1.4,0,Math.PI*2); ctx.fill();
+  }
+}
 
-      // Падение в яму
-      if (player.y > canvas.height + 60) {
-        gameOver = true;
-        restartScreen.style.display = 'flex';
-      }
+function drawFlag(){
+  const x = level.flag.x - camX;
+  ctx.strokeStyle = COLORS.outline;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(x, level.flag.y - 52);
+  ctx.lineTo(x, level.flag.y + 4);
+  ctx.stroke();
+  ctx.fillStyle = COLORS.tertiary;
+  ctx.beginPath();
+  ctx.moveTo(x, level.flag.y-50);
+  ctx.lineTo(x+34, level.flag.y-38);
+  ctx.lineTo(x, level.flag.y-26);
+  ctx.closePath();
+  ctx.fill();
+}
 
-      draw();
+function drawPlayer(){
+  const x = player.x - camX;
+  const w = player.w, h = player.h*(2-player.squash);
+  const y = player.y + player.h - h;
+  ctx.save();
+  ctx.fillStyle = COLORS.primary;
+  roundRect(x, y, w, h, 12);
+  ctx.fill();
+  // face
+  ctx.fillStyle = '#fff';
+  const eyeX = player.facing>0 ? x+w-13 : x+5;
+  ctx.beginPath(); ctx.arc(eyeX, y+h*0.38, 4,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = COLORS.outline;
+  ctx.beginPath(); ctx.arc(eyeX + (player.facing>0?1.3:-1.3), y+h*0.38, 1.8,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+}
 
-      if (!gameOver) requestAnimationFrame(update);
-    }
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  drawBackground();
+  drawPlatforms();
+  drawCoins();
+  drawFlag();
+  drawEnemies();
+  drawPlayer();
+}
 
-    // === 6. ОТРИСОВКА С ТЕКСТУРАМИ ===
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+function loop(){
+  if(!gameOverFlag) updatePlayer();
+  draw();
+  requestAnimationFrame(loop);
+}
 
-      // Камера следит за бегущим персонажем
-      ctx.save();
-      const cameraX = -player.x + 100;
+// --- input ---
+window.addEventListener('keydown', e=>{
+  if(['ArrowLeft','a','A'].includes(e.key)) keys.left = true;
+  if(['ArrowRight','d','D'].includes(e.key)) keys.right = true;
+  if(['ArrowUp','w','W',' '].includes(e.key)){ keys.jump = true; e.preventDefault(); }
+});
+window.addEventListener('keyup', e=>{
+  if(['ArrowLeft','a','A'].includes(e.key)) keys.left = false;
+  if(['ArrowRight','d','D'].includes(e.key)) keys.right = false;
+  if(['ArrowUp','w','W',' '].includes(e.key)) keys.jump = false;
+});
 
-      // 1. Движущийся Задний Фон
-      if (images.bg.complete) {
-        const bgWidth = canvas.width;
-        const offsetX = -(bgScrollX % bgWidth);
-        ctx.drawImage(images.bg, offsetX, 0, bgWidth, canvas.height);
-        ctx.drawImage(images.bg, offsetX + bgWidth, 0, bgWidth, canvas.height);
-      }
+function bindHold(el, onDown, onUp){
+  const down = e=>{ e.preventDefault(); onDown(); el.classList.add('pressed'); };
+  const up = e=>{ onUp(); el.classList.remove('pressed'); };
+  el.addEventListener('mousedown', down);
+  el.addEventListener('touchstart', down, {passive:false});
+  el.addEventListener('mouseup', up);
+  el.addEventListener('mouseleave', up);
+  el.addEventListener('touchend', up);
+  el.addEventListener('touchcancel', up);
+}
+bindHold(document.getElementById('leftBtn'), ()=>keys.left=true, ()=>keys.left=false);
+bindHold(document.getElementById('rightBtn'), ()=>keys.right=true, ()=>keys.right=false);
+bindHold(document.getElementById('jumpBtn'), ()=>keys.jump=true, ()=>keys.jump=false);
 
-      ctx.translate(cameraX, 0);
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  loadLevel(currentLevelIndex);
+  gameOverFlag = false;
+  hideModal();
+});
 
-      // 2. Блоки земли (Платформы) с текстурой
-      platforms.forEach(p => {
-        if (images.block.complete) {
-          ctx.drawImage(images.block, p.x, p.y, p.width, p.height);
-        } else {
-          ctx.fillStyle = '#22c55e';
-          ctx.fillRect(p.x, p.y, p.width, p.height);
-        }
-      });
+document.getElementById('homeBtn').addEventListener('click', goHome);
 
-      // 3. Монетки с текстурой
-      coins.forEach(c => {
-        if (!c.collected) {
-          if (images.coin.complete) {
-            ctx.drawImage(images.coin, c.x - 14, c.y - 14, 28, 28);
-          } else {
-            ctx.beginPath();
-            ctx.arc(c.x, c.y, 10, 0, Math.PI * 2);
-            ctx.fillStyle = '#ffd700';
-            ctx.fill();
-          }
-        }
-      });
-
-      // 4. Текстура Игрока
-      if (images.player.complete) {
-        ctx.drawImage(images.player, player.x, player.y, player.width, player.height);
-      } else {
-        ctx.fillStyle = '#d3bbff';
-        ctx.fillRect(player.x, player.y, player.width, player.height);
-      }
-
-      ctx.restore();
-    }
-
-    // Старт
-    generateInitialWorld();
-    requestAnimationFrame(update);
-  </script>
-
+loadLevel(0);
+loop();
+</script>
 </body>
 </html>
