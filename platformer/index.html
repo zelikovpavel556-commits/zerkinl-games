@@ -108,18 +108,18 @@
   }
   .hint b{color:var(--m3-primary);font-weight:700;}
 
-  /* Touch controls */
+  /* Touch controls (увеличенные кнопки) */
   .controls{
     display:flex;justify-content:space-between;align-items:flex-end;
-    margin-top:20px;gap:16px;
+    margin-top:24px;gap:16px;
   }
-  .dpad{display:flex;gap:10px;}
+  .dpad{display:flex;gap:14px;}
   .ctl-btn{
-    width:64px;height:64px;border:none;cursor:pointer;
+    width:76px;height:76px;border:none;cursor:pointer;
     background:var(--m3-surface-container-high);color:var(--m3-primary);
-    font-size:24px;font-weight:700;
-    border-radius:26px;
-    box-shadow:0 4px 10px rgba(29,27,32,0.12);
+    font-size:28px;font-weight:700;
+    border-radius:28px;
+    box-shadow:0 4px 12px rgba(29,27,32,0.12);
     transition:transform .18s var(--spring), border-radius .18s var(--spring), background .18s;
     -webkit-user-select:none;user-select:none;touch-action:none;
   }
@@ -129,10 +129,10 @@
     background:var(--m3-primary-container);
   }
   .jump-btn{
-    width:88px;height:88px;border:none;cursor:pointer;
+    width:104px;height:104px;border:none;cursor:pointer;
     background:var(--m3-tertiary);color:#fff;font-family:'Poppins',sans-serif;
-    font-weight:700;font-size:14px;border-radius:32px;
-    box-shadow:0 6px 16px rgba(255,111,145,0.45);
+    font-weight:700;font-size:16px;border-radius:36px;
+    box-shadow:0 6px 18px rgba(255,111,145,0.45);
     transition:transform .18s var(--spring), border-radius .18s var(--spring);
     -webkit-user-select:none;user-select:none;touch-action:none;
   }
@@ -190,7 +190,7 @@
       <canvas id="game" width="800" height="450"></canvas>
     </div>
   </div>
-  <p class="hint">Управление: <b>← →</b> или <b>A D</b> — движение, <b>Пробел / ↑</b> — прыжок. Собирай монеты и доберись до флага 🚩</p>
+  <p class="hint">Управление: <b>← →</b> — движение, <b>Прыжок</b> — прынок (падай на врагов сверху!).</p>
 
   <div class="controls">
     <div class="dpad">
@@ -369,13 +369,26 @@ function updatePlayer(){
     }
   }
 
-  // enemies
-  for(const e of level.enemies){
+  // enemies (с механикой убийства прыжком сверху)
+  for(let i = level.enemies.length - 1; i >= 0; i--){
+    const e = level.enemies[i];
     e.x += e.vx * e.dir;
     if(e.x < e.minX || e.x+e.w > e.maxX) e.dir *= -1;
-    if(rectsOverlap(player.x,player.y,player.w,player.h,e.x,e.y,e.w,e.h)){
-      loseLife();
-      break;
+
+    if(rectsOverlap(player.x, player.y, player.w, player.h, e.x, e.y, e.w, e.h)){
+      const isFalling = player.vy > 0;
+      const hitFromAbove = player.y + player.h - player.vy <= e.y + 14;
+
+      if(isFalling && hitFromAbove){
+        level.enemies.splice(i, 1);
+        player.vy = JUMP_VEL * 0.75; // Отскок вверх
+        coins++;
+        document.getElementById('coinCount').textContent = coins;
+        pulseChip('coinChip');
+      } else {
+        loseLife();
+        break;
+      }
     }
   }
 
@@ -472,7 +485,6 @@ function roundRect(x,y,w,h,r){
 }
 
 function drawBackground(){
-  // parallax clouds
   ctx.fillStyle = 'rgba(255,255,255,0.7)';
   for(let i=0;i<6;i++){
     const bx = ((i*380) - camX*0.3) % (W+400) - 200;
@@ -549,7 +561,6 @@ function drawPlayer(){
   ctx.fillStyle = COLORS.primary;
   roundRect(x, y, w, h, 12);
   ctx.fill();
-  // face
   ctx.fillStyle = '#fff';
   const eyeX = player.facing>0 ? x+w-13 : x+5;
   ctx.beginPath(); ctx.arc(eyeX, y+h*0.38, 4,0,Math.PI*2); ctx.fill();
